@@ -1,6 +1,6 @@
 ## Architecture
 
-Hackterms uses a MongoDB databse to store its information. If you have Docker and docker-compose installed, you can get up and running very quickly by:
+Hackterms uses a MongoDB database to store its information. If you have Docker and docker-compose installed, you can get up and running very quickly by:
 
 ```bash
 # build the containers
