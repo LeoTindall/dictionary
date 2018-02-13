@@ -11,30 +11,38 @@ var session = require('express-session');               // create sessions
 const MongoStore = require('connect-mongo')(session);   // store sessions in Mongo so we don't get dropped on every server restart
 const bcrypt = require('bcrypt');                       // encrypt passwords
 
+// Acquire configuration from the environment if possible
+//  Start a server on whatever the environment port is or on 3000
+const conf_port = process.env.PORT || 3000;
+//  By default, attempt to connect to a local MongoDB instance.
+//  For prod mlab, use: mongodb://<username>:<password>@@ds243325.mlab.com:43325/hackterms
+const conf_db_url = process.env.DB_URL || "mongodb://localhost:27017/dictionary";
+//  Session secret used to encipher things. If none is given, emit a warning and use a standard one.
+let conf_session_secret;
+if (process.env.SECRET) {
+    conf_session_secret = process.env.SECRET;
+} else {
+    conf_session_secret = "ejqjxvsh994hw8e7fl4gbnslvt3";
+    console.warn("SECRET environment variable not set. Falling back to INSECURE secret.");
+}
+// Session timeout. By default 12 hours.
+const conf_session_ttl = process.env.SESSION_TIMEOUT || 60*60*12;
+
+// Express configuration
 const app = express();
-app.set("port", process.env.PORT || 3000)                        // we're gonna start a server on whatever the environment port is or on 3000
+app.set("port", conf_port);                      
 app.set("views", path.join(__dirname, "/public/views"));        // tells us where our views are
 app.set("view engine", "ejs");                                  // tells us what view engine to use
-
 app.use(express.static('public'));                              // sets the correct directory for static files we're going to serve - I believe this whole folder is sent to the user
 
+// Database configuration
 const dbops = require("./app/dbops");
 const database = require("./app/database");
-
-var dbAddress;
-
-if(process.env.LIVE){                                                                           // this is how I do config, folks. put away your pitforks, we're all learning here.
-    dbAddress = "mongodb://" + process.env.MLAB_USERNAME + ":" + process.env.MLAB_PASSWORD + "@ds243325.mlab.com:43325/hackterms";
-} else {
-    dbAddress = "mongodb://localhost:27017/dictionary";
-}
-
-MongoClient.connect(dbAddress, function(err, db){
+MongoClient.connect(conf_db_url, function(err, db){
     if (err){
-        console.log("MAYDAY! MAYDAY! Crashing.");
-        return console.log(err);
+        return console.error("Could not connect to the database: " + err);
     } else {
-
+        // TODO: What is meant to happen here?
     }
 
     app.use(bodyParser.urlencoded({
@@ -45,10 +53,8 @@ MongoClient.connect(dbAddress, function(err, db){
 
     var thisDb = db;
 
-    var sessionSecret = process.env.SESSION_SECRET || "ejqjxvsh994hw8e7fl4gbnslvt3";
-
     app.use(session({                                
-            secret: sessionSecret,             
+            secret: conf_session_secret,             
             saveUninitialized: false,
             resave: false,
             secure: false,
@@ -58,7 +64,7 @@ MongoClient.connect(dbAddress, function(err, db){
             },
             store: new MongoStore({ 
                 db: thisDb,
-                ttl: 60*60*12,                  // in seconds - so, 12 hours total. Ths should hopefully expire and remove sessions for users that haven't logged in
+                ttl: conf_session_ttl,                  // in seconds - so, 12 hours total. Ths should hopefully expire and remove sessions for users that haven't logged in
                 autoRemove: 'native'
             })
     }));

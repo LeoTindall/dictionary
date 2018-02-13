@@ -1,0 +1,25 @@
+version: '3'
+services:
+  web:
+    build: .
+    ports:
+        # Change this to "80:3000" for production
+        - "3000:3000"
+    volumes:
+        # The code gets mounted in /usr/src/app on the container
+        - "./:/usr/src/app"
+    links:
+        # We need the database to be up and accessible
+        - database
+    environment:
+        - PORT=3000
+        - DB_URL=mongodb://database:27017/dictionary
+        - SECRET=changeme
+  database:
+    build: ./docker/database
+    ports:
+        - "27017:27017"
+    volumes:
+        # Store the MongoDB data on the host system, so it can be easily managed
+        - "./docker/mongodata:/data/db"
+
